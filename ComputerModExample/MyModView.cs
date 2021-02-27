@@ -6,9 +6,9 @@ namespace ComputerModExample
     public class MyModView : ComputerView
     {
         // This is called when you view is opened
-        public override void OnShow()
+        public override void OnShow(object[] args)
         {
-            base.OnShow();
+            base.OnShow(args);
             // changing the Text property will fire an PropertyChanged event
             // which lets the computer know the text has changed and update it
             Text = "Monkey Computer\nMonkey Computer\nMounkey Computer";
