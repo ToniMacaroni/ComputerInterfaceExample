@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using BepInEx;
 using BepInEx.Configuration;
 using ComputerInterface;
@@ -7,9 +8,10 @@ using Zenject;
 
 namespace ComputerModExample
 {
-    internal class MyModCommandManager : IInitializable
+    internal class MyModCommandManager : IInitializable, IDisposable
     {
         private readonly CommandHandler _commandHandler;
+        private List<CommandToken> _commandTokens;
 
         // Request the CommandHandler
         // This gets resolved by zenject since we bind MyModCommandManager in the container
@@ -20,9 +22,11 @@ namespace ComputerModExample
 
         public void Initialize()
         {
+            _commandTokens = new List<CommandToken>();
+
             // Add a command
             // You can pass null in argumentsType if you aren't expecting any
-            _commandHandler.AddCommand(new Command(name: "whoami", argumentTypes: null, args =>
+            RegisterCommand(new Command(name: "whoami", argumentTypes: null, args =>
             {
                 // args is an array of arguments (string) passed when entering the command
                 // the command handler already checks if the correct amount of arguments is passed
@@ -33,7 +37,7 @@ namespace ComputerModExample
             }));
 
             // Pass null in the argumentTypes array for any type that doesn't need to be converted (i.e. it's a string)
-            _commandHandler.AddCommand(new Command(name: "echo", argumentTypes: new Type[]{null}, args =>
+            RegisterCommand(new Command(name: "echo", argumentTypes: new Type[]{null}, args =>
             {
                 return (string) args[0];
             }));
@@ -41,7 +45,7 @@ namespace ComputerModExample
             // Pass the types of the arguments you are expecting and the command handler will try to find an converter
             // and convert them to for you one the command is executed
             // the types are checked during adding and if the command handler doesn't find an converter for the type it will log an error
-            _commandHandler.AddCommand(new Command(name: "add", argumentTypes: new [] { typeof(int), typeof(int) }, args =>
+            RegisterCommand(new Command(name: "add", argumentTypes: new [] { typeof(int), typeof(int) }, args =>
             {
                 return ((int) args[0] + (int) args[1]).ToString();
             }));
@@ -73,11 +77,30 @@ namespace ComputerModExample
 
             TomlTypeConverter.AddConverter(typeof(MyOwnColorClass), converter);
 
-            _commandHandler.AddCommand(new Command(name: "hextorgb", new []{typeof(MyOwnColorClass)}, args =>
+            RegisterCommand(new Command(name: "hextorgb", new []{typeof(MyOwnColorClass)}, args =>
             {
                 var color = (MyOwnColorClass) args[0];
                 return $"{color.R}, {color.G}, {color.B}";
             }));
+        }
+
+        public void RegisterCommand(Command cmd)
+        {
+            var token = _commandHandler.AddCommand(cmd);
+            _commandTokens.Add(token);
+        }
+
+        public void UnregisterAllCommands()
+        {
+            foreach (var token in _commandTokens)
+            {
+                token.UnregisterCommand();
+            }
+        }
+
+        public void Dispose()
+        {
+            UnregisterAllCommands();
         }
     }
 
